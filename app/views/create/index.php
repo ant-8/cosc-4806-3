@@ -36,5 +36,6 @@
                     </fieldset>
                 </form>
             </div>
+            <p> <a href="/logout">Have an account? Login here</a>
         </div>
     <?php require_once 'app/views/templates/footer.php' ?>
