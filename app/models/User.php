@@ -29,13 +29,13 @@ class User {
     $statement->bindValue(':name', $username);
     $statement->execute();
     $rows = $statement->fetch(PDO::FETCH_ASSOC);
-		
+
 	if (password_verify($password, $rows['password'])) {
-			$_SESSION['auth'] = 1;
-			$_SESSION['username'] = ucwords($username);
-			unset($_SESSION['failedAuth']);
-			header('Location: /home');
-			die;
+        $_SESSION['auth'] = 1;
+		$_SESSION['username'] = ucwords($username);
+		unset($_SESSION['failedAuth']);
+		header('Location: /home');
+
 	} else {
 		if(isset($_SESSION['failedAuth'])) {
 			$_SESSION['failedAuth'] ++; //increment
@@ -43,7 +43,7 @@ class User {
 			$_SESSION['failedAuth'] = 1;
 		}
 		header('Location: /login');
-		die;
+
 	}
   }
 
@@ -59,6 +59,10 @@ class User {
           return ['success' => false, 'message' => 'Username already exists.'];
       }
 
+      if (!$this->is_password_strong($password)) {
+          return ['success' => false, 'message' => 'Password does not meet requirements.'];
+      }
+
       $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
       $db = db_connect();
@@ -71,5 +75,11 @@ class User {
       return ['success' => $success, 'message' => $success ? 'Account created successfully' : 'Failed to create account.'];
   }
 
-
+  private function is_password_strong($password) {
+      return strlen($password) >= 8 &&
+             preg_match('/[A-Z]/', $password) &&
+             preg_match('/[a-z]/', $password) &&
+             preg_match('/[0-9]/', $password) &&
+             preg_match('/[\W]/', $password);
+  }
 }
