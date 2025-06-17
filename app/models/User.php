@@ -86,7 +86,7 @@ class User
         if (!$this->is_password_strong($password)) {
             return [
                 "success" => false,
-                "message" => "Password does not meet requirements.",
+                "message" => "Passwords must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.",
             ];
         }
 
