@@ -47,7 +47,18 @@ class User {
 	}
   }
 
+  public function username_exists($username) {
+      $db = db_connect();
+      $statement = $db->prepare("SELECT * FROM users WHERE username = :username");
+      $statement->execute([':username' => $username]);
+      return $statement->fetch(PDO::FETCH_ASSOC) !== false;
+  }
+
   public function create_user($username, $password) {
+      if ($this->username_exists($username)) {
+          return ['success' => false, 'message' => 'Username already exists.'];
+      }
+
       $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
       $db = db_connect();
@@ -57,7 +68,7 @@ class User {
           ':password' => $hashed_password
       ]);
 
-      return ['success' => $success, 'message' => $success ? 'Account created' : 'Failed to create account.'];
+      return ['success' => $success, 'message' => $success ? 'Account created successfully' : 'Failed to create account.'];
   }
 
 
