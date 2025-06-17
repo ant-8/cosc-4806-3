@@ -56,6 +56,9 @@ class User
             } else {
                 $_SESSION["failedAuth"] = 1;
             }
+            if ($result && $result['failed_attempts'] < 3){
+                $_SESSION["error_message"] = "Invalid username or password.";
+            }
             header("Location: /login");
         }
         $this->log_attempt($username, $isSuccessful);
