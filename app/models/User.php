@@ -1,104 +1,126 @@
 <?php
 
-class User {
+class User
+{
+    public $username;
+    public $password;
+    public $auth = false;
 
-  public $username;
-  public $password;
-  public $auth = false;
+    public function __construct()
+    {
+    }
 
-  public function __construct() {
-        
-  }
+    public function test()
+    {
+        $db = db_connect();
+        $statement = $db->prepare("select * from users;");
+        $statement->execute();
+        $rows = $statement->fetch(PDO::FETCH_ASSOC);
+        return $rows;
+    }
 
-  public function test () {
-    $db = db_connect();
-    $statement = $db->prepare("select * from users;");
-    $statement->execute();
-    $rows = $statement->fetch(PDO::FETCH_ASSOC);
-    return $rows;
-  }
+    public function authenticate($username, $password)
+    {
+        /*
+         * if username and password good then
+         * $this->auth = true;
+         */
+        $username = strtolower($username);
+        $db = db_connect();
+        $statement = $db->prepare(
+            "select * from users WHERE username = :name;"
+        );
+        $statement->bindValue(":name", $username);
+        $statement->execute();
+        $rows = $statement->fetch(PDO::FETCH_ASSOC);
+        $isSuccessful = false;
 
-  public function authenticate($username, $password) {
-    /*
-     * if username and password good then
-     * $this->auth = true;
-    */
-	$username = strtolower($username);
-	$db = db_connect();
-    $statement = $db->prepare("select * from users WHERE username = :name;");
-    $statement->bindValue(':name', $username);
-    $statement->execute();
-    $rows = $statement->fetch(PDO::FETCH_ASSOC);
-    $isSuccessful = false;
+        if (password_verify($password, $rows["password"])) {
+            $isSuccessful = true;
+            $_SESSION["auth"] = 1;
+            $_SESSION["username"] = ucwords($username);
+            unset($_SESSION["failedAuth"]);
+            header("Location: /home");
+        } else {
+            if (isset($_SESSION["failedAuth"])) {
+                $_SESSION["failedAuth"]++; //increment
+            } else {
+                $_SESSION["failedAuth"] = 1;
+            }
+            header("Location: /login");
+        }
+        $this->log_attempt($username, $isSuccessful);
+    }
 
-	if (password_verify($password, $rows['password'])) {
-        $isSuccessful = true;
-        $_SESSION['auth'] = 1;
-		$_SESSION['username'] = ucwords($username);
-		unset($_SESSION['failedAuth']);
-		header('Location: /home');
+    public function username_exists($username)
+    {
+        $db = db_connect();
+        $statement = $db->prepare(
+            "SELECT * FROM users WHERE username = :username"
+        );
+        $statement->execute([":username" => $username]);
+        return $statement->fetch(PDO::FETCH_ASSOC) !== false;
+    }
 
-	} else {
-		if(isset($_SESSION['failedAuth'])) {
-			$_SESSION['failedAuth'] ++; //increment
-		} else {
-			$_SESSION['failedAuth'] = 1;
-		}
-		header('Location: /login');
+    public function create_user($username, $password)
+    {
+        if ($this->username_exists($username)) {
+            return [
+                "success" => false,
+                "message" => "Username already exists.",
+            ];
+        }
 
-	}
-    $this->log_attempt($username, $isSuccessful);
-  }
+        if (!$this->is_password_strong($password)) {
+            return [
+                "success" => false,
+                "message" => "Password does not meet requirements.",
+            ];
+        }
 
-  public function username_exists($username) {
-      $db = db_connect();
-      $statement = $db->prepare("SELECT * FROM users WHERE username = :username");
-      $statement->execute([':username' => $username]);
-      return $statement->fetch(PDO::FETCH_ASSOC) !== false;
-  }
+        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
 
-  public function create_user($username, $password) {
-      if ($this->username_exists($username)) {
-          return ['success' => false, 'message' => 'Username already exists.'];
-      }
+        $db = db_connect();
+        $statement = $db->prepare(
+            "INSERT INTO users (username, password) VALUES (:username, :password)"
+        );
+        $success = $statement->execute([
+            ":username" => $username,
+            ":password" => $hashed_password,
+        ]);
 
-      if (!$this->is_password_strong($password)) {
-          return ['success' => false, 'message' => 'Password does not meet requirements.'];
-      }
+        return [
+            "success" => $success,
+            "message" => $success
+                ? "Account created successfully"
+                : "Failed to create account.",
+        ];
+    }
 
-      $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+    private function is_password_strong($password)
+    {
+        return strlen($password) >= 8 &&
+            preg_match("/[A-Z]/", $password) &&
+            preg_match("/[a-z]/", $password) &&
+            preg_match("/[0-9]/", $password) &&
+            preg_match("/[\W]/", $password);
+    }
 
-      $db = db_connect();
-      $statement = $db->prepare("INSERT INTO users (username, password) VALUES (:username, :password)");
-      $success = $statement->execute([
-          ':username' => $username,
-          ':password' => $hashed_password
-      ]);
+    private function log_attempt($username, $success)
+    {
+        $db = db_connect();
 
-      return ['success' => $success, 'message' => $success ? 'Account created successfully' : 'Failed to create account.'];
-  }
+        $successValue = 0;
+        if ($success === true) {
+            $successValue = 1;
+        }
 
-  private function is_password_strong($password) {
-      return strlen($password) >= 8 &&
-             preg_match('/[A-Z]/', $password) &&
-             preg_match('/[a-z]/', $password) &&
-             preg_match('/[0-9]/', $password) &&
-             preg_match('/[\W]/', $password);
-  }
-
-  private function log_attempt($username, $success) {
-      $db = db_connect();
-
-      $successValue = 0;
-      if ($success === true) {
-        $successValue = 1;
-      }
-
-      $statement = $db->prepare("INSERT INTO login_attempts (username, success) VALUES (:username, :success)");
-      $statement->execute([
-          ':username' => $username,
-            ':success' => $successValue
-      ]);
-  }
-
+        $statement = $db->prepare(
+            "INSERT INTO login_attempts (username, success) VALUES (:username, :success)"
+        );
+        $statement->execute([
+            ":username" => $username,
+            ":success" => $successValue,
+        ]);
+    }
 }
