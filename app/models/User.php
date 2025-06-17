@@ -33,6 +33,7 @@ class User
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($result && $result['failed_attempts'] >= 3) {
             $_SESSION["failedAuth"] = 3;
+            $_SESSION["error_message"] = "Too many failed login attempts. Please try again in 60 seconds.";
             header("Location: /login");
             exit;
         }

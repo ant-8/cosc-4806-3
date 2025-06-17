@@ -6,8 +6,14 @@
                 <h1>You are not logged in</h1>
             </div>
         </div>
+				<?php if (isset($_SESSION['error_message'])): ?>
+						<div class="alert alert-danger" role="alert">
+								<?= $_SESSION['error_message'] ?>
+						</div>
+						<?php unset($_SESSION['error_message']); ?>
+				<?php endif; ?>
     </div>
-
+	
 <div class="row">
     <div class="col-sm-auto">
 		<form action="/login/verify" method="post" >
