@@ -29,8 +29,10 @@ class User {
     $statement->bindValue(':name', $username);
     $statement->execute();
     $rows = $statement->fetch(PDO::FETCH_ASSOC);
+    $isSuccessful = false;
 
 	if (password_verify($password, $rows['password'])) {
+        $isSuccessful = true;
         $_SESSION['auth'] = 1;
 		$_SESSION['username'] = ucwords($username);
 		unset($_SESSION['failedAuth']);
@@ -45,6 +47,7 @@ class User {
 		header('Location: /login');
 
 	}
+    $this->log_attempt($username, $isSuccessful);
   }
 
   public function username_exists($username) {
@@ -82,4 +85,20 @@ class User {
              preg_match('/[0-9]/', $password) &&
              preg_match('/[\W]/', $password);
   }
+
+  private function log_attempt($username, $success) {
+      $db = db_connect();
+
+      $successValue = 0;
+      if ($success === true) {
+        $successValue = 1;
+      }
+
+      $statement = $db->prepare("INSERT INTO login_attempts (username, success) VALUES (:username, :success)");
+      $statement->execute([
+          ':username' => $username,
+            ':success' => $successValue
+      ]);
+  }
+
 }
