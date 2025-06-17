@@ -27,9 +27,17 @@ class User
          */
         $username = strtolower($username);
         $db = db_connect();
-        $statement = $db->prepare(
-            "select * from users WHERE username = :name;"
-        );
+
+        $stmt = $db->prepare("SELECT COUNT(*) AS failed_attempts FROM login_attempts WHERE username = :username AND success = 0 AND attempt_time > (NOW() - INTERVAL 60 SECOND)");
+        $stmt->execute([':username' => $username]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($result && $result['failed_attempts'] >= 3) {
+            $_SESSION["failedAuth"] = 3;
+            header("Location: /login");
+            exit;
+        }
+
+        $statement = $db->prepare("select * from users WHERE username = :name;");
         $statement->bindValue(":name", $username);
         $statement->execute();
         $rows = $statement->fetch(PDO::FETCH_ASSOC);
